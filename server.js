@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
     res.send(`
         <html>
             <head>
-                <title>Backend Peaje</title>
+                <title>Backend APP MOVIL</title>
             </head>
             <body>
                 <h1>Conexión a la base de datos establecida correctamente</h1>
