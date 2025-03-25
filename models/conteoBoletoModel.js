@@ -1,55 +1,118 @@
 import connectDB from "../config/db.js";
 
-const crearModeloContador = (nombreTabla) => {
-  const actualizarContador = async () => {
+const crearModeloConteoBoletos = () => {
+  const insertarBoleto = async (valorBoletoId, cajaId, cantidad, total) => {
     try {
       const connection = await connectDB();
-
-      // 1. Obtener el último valor de Contador
-      const queryUltimoContador = `SELECT Contador FROM ${nombreTabla} ORDER BY Id DESC LIMIT 1`;
-      const [rows] = await connection.query(queryUltimoContador);
-
-      let nuevoContador = 1; // Valor por defecto si no hay registros
-
-      if (rows.length > 0) {
-        nuevoContador = rows[0].Contador + 1; // Incrementar el contador
+      
+      // Verificar que exista el valor del boleto
+      const [valorRows] = await connection.query(
+        'SELECT Id FROM Valor_Boletos WHERE Id = ?',
+        [valorBoletoId]
+      );
+      
+      if (valorRows.length === 0) {
+        throw new Error("El valor del boleto no existe");
       }
-
-      // 2. Actualizar el campo Contador
-      const queryActualizarContador = `UPDATE ${nombreTabla} SET Contador = ? ORDER BY Id DESC LIMIT 1`;
-      await connection.query(queryActualizarContador, [nuevoContador]);
-
-      console.log(`Contador actualizado en ${nombreTabla}: ${nuevoContador}`);
-      return nuevoContador;
+      
+      // Verificar que exista la caja
+      const [cajaRows] = await connection.query(
+        'SELECT Id FROM Cajas WHERE Id = ?',
+        [cajaId]
+      );
+      
+      if (cajaRows.length === 0) {
+        throw new Error("La caja no existe");
+      }
+      
+      // Insertar el registro
+      const [result] = await connection.query(
+        'INSERT INTO Conteo_Boletos (Valor_Boleto_Id, Caja_Id, Cantidad, Total) VALUES (?, ?, ?, ?)',
+        [valorBoletoId, cajaId, cantidad, total]
+      );
+      
+      return result.insertId;
     } catch (err) {
-      console.error(`Error al actualizar el contador en ${nombreTabla}:`, err);
+      console.error('Error al insertar boleto:', err);
       throw err;
     }
   };
 
-  const obtenerUltimoContador = async () => {
+  const obtenerConteoActual = async (cajaId) => {
     try {
       const connection = await connectDB();
-      const queryUltimoContador = `SELECT Contador FROM ${nombreTabla} ORDER BY Id DESC LIMIT 1`;
-      const [rows] = await connection.query(queryUltimoContador);
-
-      if (rows.length === 0) {
-        throw new Error("No se encontraron registros en la tabla.");
-      }
-
-      const ultimoContador = rows[0].Contador;
-      console.log(`Último contador obtenido de ${nombreTabla}: ${ultimoContador}`);
-      return ultimoContador;
+      
+      const [rows] = await connection.query(
+        `SELECT 
+          cb.Id,
+          vb.Valor,
+          cb.Cantidad,
+          cb.Total,
+          cb.Caja_Id
+        FROM Conteo_Boletos cb
+        JOIN Valor_Boletos vb ON cb.Valor_Boleto_Id = vb.Id
+        WHERE cb.Caja_Id = ?
+        ORDER BY cb.Id DESC
+        LIMIT 1`,
+        [cajaId]
+      );
+      
+      return rows[0] || null;
     } catch (err) {
-      console.error(`Error al obtener el último contador de ${nombreTabla}:`, err);
+      console.error('Error al obtener conteo actual:', err);
+      throw err;
+    }
+  };
+
+  const reiniciarConteo = async (cajaId) => {
+    try {
+      const connection = await connectDB();
+      
+      await connection.query(
+        'DELETE FROM Conteo_Boletos WHERE Caja_Id = ?',
+        [cajaId]
+      );
+      
+      return true;
+    } catch (err) {
+      console.error('Error al reiniciar conteo:', err);
+      throw err;
+    }
+  };
+
+  const obtenerHistorial = async (cajaId, limite = 10) => {
+    try {
+      const connection = await connectDB();
+      
+      const [rows] = await connection.query(
+        `SELECT 
+          cb.Id,
+          vb.Valor,
+          cb.Cantidad,
+          cb.Total,
+          cb.Caja_Id,
+          cb.created_at
+        FROM Conteo_Boletos cb
+        JOIN Valor_Boletos vb ON cb.Valor_Boleto_Id = vb.Id
+        WHERE cb.Caja_Id = ?
+        ORDER BY cb.Id DESC
+        LIMIT ?`,
+        [cajaId, limite]
+      );
+      
+      return rows;
+    } catch (err) {
+      console.error('Error al obtener historial:', err);
       throw err;
     }
   };
 
   return {
-    actualizarContador,
-    obtenerUltimoContador,
+    insertarBoleto,
+    obtenerConteoActual,
+    reiniciarConteo,
+    obtenerHistorial
   };
 };
 
-export default crearModeloContador;
+export default crearModeloConteoBoletos;
