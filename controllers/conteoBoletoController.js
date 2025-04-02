@@ -25,6 +25,50 @@ const crearControladorConteoBoletos = (modelo) => {
     }
   };
 
+  const registrarMultiplesBoletos = async (req, res) => {
+    try {
+      const { boletos } = req.body;
+      
+      // Validación básica
+      if (!boletos || !Array.isArray(boletos) || boletos.length === 0) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Se requiere un array de boletos no vacío en el cuerpo de la solicitud'
+        });
+      }
+      
+      // Validación detallada
+      const errores = [];
+      boletos.forEach((boleto, index) => {
+        if (!boleto.valorBoletoId || !boleto.cajaId || !boleto.cantidad || !boleto.total) {
+          errores.push(`Boleto en posición ${index} no tiene todos los campos requeridos`);
+        }
+      });
+      
+      if (errores.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Errores de validación en los boletos',
+          errors: errores
+        });
+      }
+      
+      const idsInsertados = await modelo.registrarMultiplesBoletos(boletos);
+      
+      res.status(201).json({ 
+        success: true,
+        message: `Se registraron ${idsInsertados.length} boletos correctamente`,
+        ids: idsInsertados
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: 'Error al registrar múltiples boletos',
+        error: error.message
+      });
+    }
+  };
+
   const obtenerConteoActual = async (req, res) => {
     try {
       const { cajaId } = req.params;
@@ -101,6 +145,7 @@ const crearControladorConteoBoletos = (modelo) => {
 
   return {
     registrarBoleto,
+    registrarMultiplesBoletos,
     obtenerConteoActual,
     reiniciarConteo,
     obtenerHistorial

@@ -6,8 +6,11 @@ const router = express.Router();
 const modelo = crearModeloConteoBoletos();
 const controlador = crearControladorConteoBoletos(modelo);
 
-// Registrar nuevo boleto
+// Registrar nuevo boleto individual
 router.post("/registrar", controlador.registrarBoleto);
+
+// Registrar múltiples boletos en una sola operación
+router.post("/registrar-multiples", controlador.registrarMultiplesBoletos);
 
 // Obtener conteo actual por caja
 router.get("/caja/:cajaId", controlador.obtenerConteoActual);
